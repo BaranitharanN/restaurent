@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>New Order</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .navbar {
+      background: #333;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    .center-info {
+      font-size: 16px;
+    }
+    .right-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .right-section a:hover {
+      text-decoration: underline;
+    }
+    main {
+      flex: 1;
+      padding: 20px;
+    }
+    .order-form {
+      background: white;
+      padding: 25px;
+      max-width: 500px;
+      margin: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .order-form h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      background: #28a745;
+      color: white;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #218838;
+    }
+    footer {
+      background: #333;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div class="logo">
+      <img src="https://cdn-icons-png.flaticon.com/512/3075/3075977.png" alt="Logo" style="height:40px; margin-right:10px;">
+      <span style="font-size:20px; font-weight:bold;">My Restaurant POS</span>
+    </div>
+    <div class="center-info">
+      <span id="current-time"></span>
+    </div>
+    <div class="right-section">
+      <a href="home.html" style="text-decoration:none; color:white; font-weight:bold;">🏠 Home</a>
+      <span>👤 Cashier: John</span>
+      <button onclick="logout()" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:5px;">Logout</button>
+    </div>
+  </div>
+
+  <main>
+    <div class="order-form">
+      <h2>New Order</h2>
+      <div class="form-group">
+        <label for="item">Select Item</label>
+        <select id="item">
+          <option value="Pizza">Pizza</option>
+          <option value="Burger">Burger</option>
+          <option value="Pasta">Pasta</option>
+          <option value="Coffee">Coffee</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="quantity">Quantity</label>
+        <input type="number" id="quantity" placeholder="Enter quantity">
+      </div>
+      <div class="form-group">
+        <label for="table">Table No</label>
+        <input type="text" id="table" placeholder="Enter table no">
+      </div>
+      <button onclick="placeOrder()">Place Order</button>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 POS System | All Rights Reserved</p>
+  </footer>
+
+  <script>
+    function updateTime() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById("current-time").textContent = `🕒 ${timeString}`;
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    function placeOrder() {
+      const item = document.getElementById("item").value;
+      const quantity = document.getElementById("quantity").value;
+      const table = document.getElementById("table").value;
+
+      if (item && quantity && table) {
+        const order = {
+          id: Date.now(),
+          cashier: "John",
+          time: new Date().toLocaleString(),
+          items: [
+            { name: item, table: table, quantity: quantity }
+          ]
+        };
+        let orders = JSON.parse(localStorage.getItem("orders")) || [];
+        orders.push(order);
+        localStorage.setItem("orders", JSON.stringify(orders));
+        alert(`Order placed!\nItem: ${item}\nQuantity: ${quantity}\nTable: ${table}`);
+        document.getElementById("quantity").value = "";
+        document.getElementById("table").value = "";
+      } else {
+        alert("Please fill all fields!");
+      }
+    }
+
+    function logout() {
+      alert("You have been logged out.");
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Orders</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: #333;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    .center-info {
+      font-size: 16px;
+    }
+    .right-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .right-section a:hover {
+      text-decoration: underline;
+    }
+
+    /* Main */
+    main {
+      padding: 20px;
+    }
+    .order-list {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .order {
+      border-bottom: 1px solid #ddd;
+      padding: 10px 0;
+    }
+    .order:last-child {
+      border-bottom: none;
+    }
+    .order h5 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .order p {
+      margin: 5px 0;
+      color: #555;
+    }
+    .order ul {
+      padding-left: 20px;
+    }
+    .export-buttons {
+      text-align: center;
+      margin-top: 30px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+    }
+    .btn-success {
+      background-color: #28a745;
+      color: white;
+    }
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+      margin-top: 10px;
+    }
+
+    /* Footer */
+    footer {
+      background: #333;
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <div class="navbar">
+    <div class="logo">
+      <img src="https://cdn-icons-png.flaticon.com/512/3075/3075977.png" alt="Logo" style="height:40px; margin-right:10px;">
+      <span style="font-size:20px; font-weight:bold;">My Restaurant POS</span>
+    </div>
+    <div class="center-info">
+      <span id="current-time"></span>
+    </div>
+    <div class="right-section">
+      <a href="home.html" style="text-decoration:none; color:white; font-weight:bold;">🏠 Home</a>
+      <span>👤 Cashier: John</span>
+      <button onclick="logout()" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:5px;">Logout</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main>
+    <div class="order-list" id="orderList">
+      <h2>Order History</h2>
+      <div id="orders-container"></div>
+
+      <div class="export-buttons">
+        <button onclick="exportSales('daily')" class="btn btn-primary">Export Daily Sales</button>
+        <button onclick="exportSales('weekly')" class="btn btn-success">Export Weekly Sales</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 POS System | All Rights Reserved</p>
+  </footer>
+
+  <!-- Script -->
+  <script>
+    let orders = JSON.parse(localStorage.getItem("orders")) || [];
+    const container = document.getElementById("orders-container");
+
+    function displayOrders() {
+      container.innerHTML = "";
+
+      if (orders.length === 0) {
+        container.innerHTML = "<p>No orders placed yet.</p>";
+        return;
+      }
+
+      orders.forEach((order, index) => {
+        const orderDiv = document.createElement("div");
+        orderDiv.className = "order";
+
+        const itemsHTML = order.items && Array.isArray(order.items)
+          ? order.items.map(item => `
+              <li><strong>${item.name}</strong> — Table: ${item.table}, Quantity: ${item.quantity}</li>
+            `).join("")
+          : "<li><em>No item details available</em></li>";
+
+        orderDiv.innerHTML = `
+          <h5>Order #${index + 1}</h5>
+          <p><strong>Cashier:</strong> ${order.cashier || "Unknown"}</p>
+          <p><strong>Time:</strong> ${order.time}</p>
+          <p><strong>Items:</strong></p>
+          <ul>${itemsHTML}</ul>
+          <button onclick="deleteOrder(${index})" class="btn btn-danger">🗑️ Delete Order</button>
+        `;
+        container.appendChild(orderDiv);
+      });
+    }
+
+    function deleteOrder(index) {
+      if (confirm("Are you sure you want to delete this order?")) {
+        orders.splice(index, 1);
+        localStorage.setItem("orders", JSON.stringify(orders));
+        displayOrders();
+      }
+    }
+
+    function exportSales(type) {
+      const now = new Date();
+      let filteredOrders = [];
+
+      if (type === "daily") {
+        filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.time);
+          return orderDate.toDateString() === now.toDateString();
+        });
+      } else if (type === "weekly") {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 7);
+        filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.time);
+          return orderDate >= oneWeekAgo && orderDate <= now;
+        });
+      }
+
+      if (filteredOrders.length === 0) {
+        alert(`No ${type} sales to export.`);
+        return;
+      }
+
+      let csv = "Order ID,Cashier,Time,Item Name,Table,Quantity\n";
+
+      filteredOrders.forEach((order, index) => {
+        const orderId = order.id || `#${index + 1}`;
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach(item => {
+            csv += `${orderId},${order.cashier},${order.time},${item.name},${item.table},${item.quantity}\n`;
+          });
+        } else {
+          csv += `${orderId},${order.cashier},${order.time},N/A,N/A,N/A\n`;
+        }
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${type}_sales_${now.toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function logout() {
+      alert("Logging out...");
+      window.location.href = "login.html";
+    }
+
+    displayOrders();
+
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById("current-time").textContent = now.toLocaleString();
+    }, 1000);
+  </script>
+</body>
+</html>
