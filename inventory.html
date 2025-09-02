@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { background-color: #f8f9fa; }
+    .navbar-brand { font-weight: bold; }
+    .low-stock { background-color: #fff3cd; }
+    footer { background-color: #343a40; color: white; padding: 10px 0; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <!-- 🔷 Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">POS System</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="menu.html">Menu</a></li>
+          <li class="nav-item"><a class="nav-link" href="orders.html">Orders</a></li>
+          <li class="nav-item"><a class="nav-link active" href="#">Inventory</a></li>
+          <li class="nav-item"><a class="nav-link" href="billing.html">Billing</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 🔧 Main Content -->
+  <main class="container py-4">
+    <h2 class="mb-4">📦 Inventory Management</h2>
+
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search item..." />
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-success" onclick="exportCSV()">Export CSV</button>
+      </div>
+    </div>
+
+    <form id="itemForm" class="row g-2">
+      <input type="hidden" id="editIndex" />
+      <div class="col-md-3"><input type="text" id="name" class="form-control" placeholder="Item Name" required /></div>
+      <div class="col-md-2"><input type="text" id="category" class="form-control" placeholder="Category" required /></div>
+      <div class="col-md-2"><input type="number" id="price" class="form-control" placeholder="Price" required /></div>
+      <div class="col-md-2"><input type="number" id="stock" class="form-control" placeholder="Stock" required /></div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary">Save Item</button>
+        <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear</button>
+      </div>
+    </form>
+
+    <table class="table table-bordered mt-4">
+      <thead class="table-dark">
+        <tr>
+          <th>Item</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryTable"></tbody>
+    </table>
+  </main>
+
+  <!-- 🔻 Footer -->
+  <footer>
+    <div class="container">
+      <p class="mb-0">© 2025 POS System | All Rights Reserved </p>
+    </div>
+  </footer>
+
+  <!-- 🔌 Scripts -->
+  <script>
+    let inventory = JSON.parse(localStorage.getItem("inventory")) || [];
+
+    function renderTable() {
+      const table = document.getElementById("inventoryTable");
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      table.innerHTML = "";
+
+      inventory.forEach((item, index) => {
+        if (
+          item.name.toLowerCase().includes(search) ||
+          item.category.toLowerCase().includes(search)
+        ) {
+          const row = document.createElement("tr");
+          if (item.stock < 5) row.classList.add("low-stock");
+
+          row.innerHTML = `
+            <td>${item.name}</td>
+            <td>${item.category}</td>
+            <td>₹${item.price}</td>
+            <td>${item.stock}</td>
+            <td>
+              <button class="btn btn-sm btn-warning" onclick="editItem(${index})">Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteItem(${index})">Delete</button>
+            </td>
+          `;
+          table.appendChild(row);
+        }
+      });
+    }
+
+    document.getElementById("itemForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const name = document.getElementById("name").value;
+      const category = document.getElementById("category").value;
+      const price = parseFloat(document.getElementById("price").value);
+      const stock = parseInt(document.getElementById("stock").value);
+      const editIndex = document.getElementById("editIndex").value;
+
+      const newItem = { name, category, price, stock };
+
+      if (editIndex === "") {
+        inventory.push(newItem);
+      } else {
+        inventory[editIndex] = newItem;
+      }
+
+      localStorage.setItem("inventory", JSON.stringify(inventory));
+      resetForm();
+      renderTable();
+    });
+
+    function editItem(index) {
+      const item = inventory[index];
+      document.getElementById("name").value = item.name;
+      document.getElementById("category").value = item.category;
+      document.getElementById("price").value = item.price;
+      document.getElementById("stock").value = item.stock;
+      document.getElementById("editIndex").value = index;
+    }
+
+    function deleteItem(index) {
+      if (confirm("Delete this item?")) {
+        inventory.splice(index, 1);
+        localStorage.setItem("inventory", JSON.stringify(inventory));
+        renderTable();
+      }
+    }
+
+    function resetForm() {
+      document.getElementById("itemForm").reset();
+      document.getElementById("editIndex").value = "";
+    }
+
+    function exportCSV() {
+      let csv = "Item,Category,Price,Stock\n";
+      inventory.forEach(item => {
+        csv += `${item.name},${item.category},${item.price},${item.stock}\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "inventory.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("searchInput").addEventListener("input", renderTable);
+
+    renderTable();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
