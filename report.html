@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reports Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .navbar {
+      background: #333;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    .summary {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      margin: 20px;
+      gap: 20px;
+    }
+    .summary-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 200px;
+      text-align: center;
+    }
+    .search-box {
+  padding: 8px;
+  width: 250px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-right: 10px;
+}
+
+.summary-box:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+  background-color:grey ;
+}
+
+canvas {
+  border-radius: 10px;
+  background: white;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+    canvas {
+      max-width: 800px;
+      margin: 30px auto;
+      display: block;
+    }
+    .filter-section {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 10px;
+    }
+    .btn-primary { background-color: #007bff; color: white; }
+    .btn-success { background-color: #28a745; color: white; }
+    footer {
+      background: #333;
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <div class="navbar">
+    <div class="logo">
+      <img src="https://cdn-icons-png.flaticon.com/512/3075/3075977.png" alt="Logo" style="height:40px; margin-right:10px;">
+      <span style="font-size:20px; font-weight:bold;">My Restaurant POS</span>
+    </div>
+    <div class="center-info">
+      <span id="current-time"></span>
+    </div>
+    <div class="right-section">
+      <a href="home.html" style="text-decoration:none; color:white; font-weight:bold;">🏠 Home</a>
+      <span>👤 Cashier: John</span>
+      <button onclick="logout()" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:5px;">Logout</button>
+    </div>
+  </div>
+
+  <!-- Summary Boxes -->
+  <div class="summary">
+    <div class="summary-box" id="dailySales">Daily Sales: ₹0</div>
+    <div class="summary-box" id="weeklySales">Weekly Sales: ₹0</div>
+    <div class="summary-box" id="monthlySales">Monthly Sales: ₹0</div>
+    <div class="summary-box" id="topItem">Top Item: N/A</div>
+  </div>
+
+  <!-- Chart -->
+  <canvas id="salesChart"></canvas>
+
+  <!-- Export & Filter -->
+  <div class="filter-section">
+  <input type="text" id="searchInput" placeholder="Search by customer or item" class="search-box" />
+  <button class="btn btn-success" onclick="handleSearch()">Search</button>
+  <div id="searchResult" style="margin-top:10px; font-weight:bold;"></div>
+</div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 POS System | All Rights Reserved</p>
+  </footer>
+
+  <!-- Script -->
+  <script>
+    const billings = JSON.parse(localStorage.getItem("billings")) || [];
+    const now = new Date();
+    const dailyTotal = billings.filter(b => new Date(b.time).toDateString() === now.toDateString())
+                               .reduce((sum, b) => sum + b.grandTotal, 0);
+    const weeklyTotal = billings.filter(b => {
+      const date = new Date(b.time);
+      const oneWeekAgo = new Date(); oneWeekAgo.setDate(now.getDate() - 7);
+      return date >= oneWeekAgo && date <= now;
+    }).reduce((sum, b) => sum + b.grandTotal, 0);
+    const monthlyTotal = billings.filter(b => new Date(b.time).getMonth() === now.getMonth())
+                                 .reduce((sum, b) => sum + b.grandTotal, 0);
+
+    document.getElementById("dailySales").textContent = `Daily Sales: ₹${dailyTotal.toFixed(2)}`;
+    document.getElementById("weeklySales").textContent = `Weekly Sales: ₹${weeklyTotal.toFixed(2)}`;
+    document.getElementById("monthlySales").textContent = `Monthly Sales: ₹${monthlyTotal.toFixed(2)}`;
+
+    // Top Item
+    const itemMap = {};
+    billings.forEach(b => {
+      b.items.forEach(i => {
+        itemMap[i.name] = (itemMap[i.name] || 0) + i.qty;
+      });
+    });
+    const topItem = Object.entries(itemMap).sort((a,b) => b[1]-a[1])[0];
+    document.getElementById("topItem").textContent = topItem ? `Top Item: ${topItem[0]} (${topItem[1]})` : "Top Item: N/A";
+
+    // Chart.js
+    const dailyLabels = [];
+    const dailyData = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(); date.setDate(now.getDate() - i);
+      const label = date.toLocaleDateString();
+      const total = billings.filter(b => new Date(b.time).toDateString() === date.toDateString())
+                            .reduce((sum, b) => sum + b.grandTotal, 0);
+      dailyLabels.push(label);
+      dailyData.push(total);
+    }
+
+    new Chart(document.getElementById("salesChart"), {
+      type: "bar",
+      data: {
+        labels: dailyLabels,
+        datasets: [{
+          label: "Daily Sales (₹)",
+          data: dailyData,
+          backgroundColor: "#007bff"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: "Sales Over Last 7 Days" }
+        }
+      }
+    });
+
+    // CSV Export
+    function exportCSV() {
+      let csv = "Customer Name,Time,Item,Qty,Price,Total,Grand Total\n";
+      billings.forEach(b => {
+        b.items.forEach(i => {
+          csv += `${b.customerName},${b.time},${i.name},${i.qty},${i.price},${(i.qty*i.price).toFixed(2)},${b.grandTotal.toFixed(2)}\n`;
+        });
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sales_report_${now.toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Search Filter
+    function handleSearch() {
+  const query = document.getElementById("searchInput").value.toLowerCase().trim();
+  if (!query) {
+    alert("Please enter a search term.");
+    return;
+  }
+
+  const filtered = billings.filter(b =>
+    b.customerName.toLowerCase().includes(query) ||
+    b.items.some(i => i.name.toLowerCase().includes(query))
+  );
+
+  document.getElementById("searchResult").textContent = `🔍 Found ${filtered.length} matching record(s).`;
+}
+
+    function logout() {
+      alert("Logging out...");
+      window.location.href = "login.html";
+    }
+
+    setInterval(() => {
+      document.getElementById("current-time").textContent = new Date().toLocaleString();
+    }, 1000);
+  </script>
+</body>
+</html>
